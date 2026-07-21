@@ -355,7 +355,6 @@
 <!-- VAULT -->
 <section class="vault" id="vault">
   <div class="wrap">
-    <p class="kicker reveal">The Vault</p>
     <div class="progress-box reveal" id="tracker">
       <div class="tr-head"><span class="kicker">Shareholder Report</span><span class="tr-updated" id="tr-updated"></span></div>
       <div class="tr-headline" id="tr-controlled">—</div>
@@ -374,24 +373,6 @@
     <p class="kicker reveal">The Mission</p>
     <h2 class="reveal">The Netflix<br>Stock Takeover.</h2>
     <p class="sub reveal">GameStop proved retail can move together. $CHILL takes it further: every reflection puts real NFLX into holders' hands. One community, one float, one goal — become the majority.</p>
-
-    <div class="progress-box reveal">
-      <div class="progress-label"><span>ROAD TO MAJORITY</span><b id="pct">0%</b></div>
-      <div class="bar-wrap">
-        <div class="bar"><div class="fill" id="fill"></div></div>
-        <div class="tick" style="left:5%"></div><div class="tick-label" style="left:5%">5% · 13D</div>
-        <div class="tick" style="left:8%"></div><div class="tick-label" style="left:8%;top:40px">8% · #1 HOLDER</div>
-        <div class="tick" style="left:25%"></div><div class="tick-label" style="left:25%">25% · BLOCKING</div>
-        <div class="tick" style="left:51%"></div><div class="tick-label" style="left:51%">51% · MAJORITY</div>
-      </div>
-      <p class="progress-note" id="ms-note">NFLX held by the $CHILL community (pool + reflections claimed + pending) vs. ~4.25B Netflix shares outstanding. Calculated on-chain July 20, 2026: 66.89 NFLX and counting.</p>
-      <div class="stats">
-        <div class="stat"><div class="v" id="s-price">—</div><div class="l">$CHILL Price</div></div>
-        <div class="stat"><div class="v" id="s-mcap">—</div><div class="l">Market Cap</div></div>
-        <div class="stat"><div class="v" id="s-vol">—</div><div class="l">24h Volume</div></div>
-        <div class="stat"><div class="v">51%</div><div class="l">The Target</div></div>
-      </div>
-    </div>
 
     <div class="season-head reveal"><h3>Episodes</h3><span>Season 1: The Stock Takeover</span></div>
     <div class="milestones">
@@ -499,49 +480,11 @@
   },{threshold:.12});
   document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
 
-  // progress toward NEXT milestone
-  // Calculated on-chain 2026-07-20: pool 61.11 NFLX + 4.49 pending in contract
-  // + 1.29 already claimed as reflections = 66.89 NFLX held by the community,
-  // vs ~4.25B Netflix shares outstanding (post 10-for-1 split).
+  // milestone marking (episodes)
   var HELD_PCT=0.0000016; // percent of all NFLX shares held by $CHILL community
-  var MILESTONES=[
-    {p:1, name:'EP. 1'},
-    {p:5, name:'EP. 2'},
-    {p:8, name:'EP. 3'},
-    {p:15,name:'EP. 4'},
-    {p:25,name:'EP. 5'},
-    {p:51,name:'THE FINALE'}
-  ];
-  var prev=0,next=MILESTONES[MILESTONES.length-1];
-  for(var i=0;i<MILESTONES.length;i++){
-    if(HELD_PCT<MILESTONES[i].p){next=MILESTONES[i];break;}
-    prev=MILESTONES[i].p;
-  }
-  var PROGRESS=Math.min((HELD_PCT-prev)/(next.p-prev)*100,100); // % of the way to next milestone
-  // stamp hit milestones
   document.querySelectorAll('.ep[data-pct]').forEach(function(el){
     if(HELD_PCT>=parseFloat(el.getAttribute('data-pct')))el.classList.add('hit');
   });
-  function fmtPct(n){
-    if(n>=1)return n.toFixed(2)+'%';
-    if(n>=0.01)return n.toFixed(3)+'%';
-    return n.toFixed(5)+'%';
-  }
-  var animated=false;
-  var io2=new IntersectionObserver(function(es){
-    es.forEach(function(e){
-      if(e.isIntersecting&&!animated){
-        animated=true;
-        document.getElementById('fill').style.width=Math.max(HELD_PCT,1.5)+'%';
-        var n=0,t=setInterval(function(){
-          n+=PROGRESS/40;
-          if(n>=PROGRESS){n=PROGRESS;clearInterval(t);}
-          document.getElementById('pct').textContent=fmtPct(n)+' of the way through '+next.name;
-        },30);
-      }
-    });
-  },{threshold:.4});
-  io2.observe(document.querySelector('.progress-box'));
 
   // NFLX Takeover Tracker — daily holder report (refreshes ~daily; poll every 30 min)
   var REPORT='https://cdn.jsdelivr.net/gh/mavrkofficial/nflx-n-chill@main/daily-holder-report/latest.json';
