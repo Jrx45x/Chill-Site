@@ -349,7 +349,7 @@
     <h2 class="reveal">Reflections Earned So Far.</h2>
     <p class="sub reveal" style="margin:0 auto">Every Trade Pays Holders 1% In Real Tokenized NFLX. This Counter Only Goes Up.</p>
     <div class="vault-counter reveal"><span id="v-nflx">0.00</span><span class="v-unit">NFLX</span></div>
-    <p class="v-sub reveal"><b id="v-shares">—</b> Netflix Shares Earned By Holders — Worth <b id="v-usd">—</b></p>
+    <p class="v-sub reveal"><b id="v-shares">—</b> Netflix Shares Earned By Holders <b id="v-usd">—</b></p>
     <div class="v-row reveal">
       <div class="v-stat"><b id="v-vol">—</b><span>NFLX Volume Traded</span></div>
       <div class="v-stat"><b id="v-swaps">—</b><span>Total Trades</span></div>
@@ -543,42 +543,50 @@
     setTimeout(function(){toast.classList.remove('show')},1600);
   }
 
-  // The Vault — live reflections from Sentry subgraph
+  // The Vault — live reflections from Sentry subgraph (polls every 30s)
   var GQL='https://api.goldsky.com/api/public/project_cmm7vh5xwsa8m01qmdr7w7u62/subgraphs/sentry-robinhood/1.2.0/gn';
-  var nflxUsd=0;
+  var nflxUsd=0, vShown=0, vSeen=false;
   function num(n){return Number(n).toLocaleString('en-US')}
-  fetch(GQL,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({query:'{ token(id: "0xf699aea8a333202a7dc610abc664c213c9dc4111") { volumeWETH swapCount buyCount sellCount } }'})})
-  .then(function(r){return r.json()})
-  .then(function(d){
-    var t=d.data&&d.data.token; if(!t)return;
-    var vol=parseFloat(t.volumeWETH);
-    var refl=vol*0.01; // 1% of every trade goes to holders, in NFLX
-    document.getElementById('v-vol').textContent=vol.toFixed(2);
-    document.getElementById('v-swaps').textContent=num(t.swapCount);
-    document.getElementById('v-buys').textContent=num(t.buyCount);
-    document.getElementById('v-sells').textContent=num(t.sellCount);
-    document.getElementById('v-shares').textContent=refl.toFixed(2);
-    if(nflxUsd)document.getElementById('v-usd').textContent='$'+(refl*nflxUsd).toLocaleString('en-US',{maximumFractionDigits:0});
-    // count-up when visible
-    var el=document.getElementById('v-nflx'),done=false;
-    new IntersectionObserver(function(es,obs){
-      es.forEach(function(e){
-        if(e.isIntersecting&&!done){
-          done=true;obs.disconnect();
-          var start=null;
-          function step(ts){
-            if(!start)start=ts;
-            var p=Math.min((ts-start)/1800,1);
-            p=1-Math.pow(1-p,3);
-            el.textContent=(refl*p).toFixed(2);
-            if(p<1)requestAnimationFrame(step);
-          }
-          requestAnimationFrame(step);
-        }
-      });
-    },{threshold:.5}).observe(el);
-  }).catch(function(){});
+  function tickTo(target,dur){
+    var el=document.getElementById('v-nflx');
+    var from=vShown, start=null;
+    function step(ts){
+      if(!start)start=ts;
+      var p=Math.min((ts-start)/dur,1);
+      p=1-Math.pow(1-p,3);
+      vShown=from+(target-from)*p;
+      el.textContent=vShown.toFixed(2);
+      if(p<1)requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function vaultUpdate(){
+    fetch(GQL,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query:'{ token(id: "0xf699aea8a333202a7dc610abc664c213c9dc4111") { volumeWETH swapCount buyCount sellCount } }'})})
+    .then(function(r){return r.json()})
+    .then(function(d){
+      var t=d.data&&d.data.token; if(!t)return;
+      var vol=parseFloat(t.volumeWETH);
+      var refl=vol*0.01; // 1% of every trade goes to holders, in NFLX
+      document.getElementById('v-vol').textContent=vol.toFixed(2);
+      document.getElementById('v-swaps').textContent=num(t.swapCount);
+      document.getElementById('v-buys').textContent=num(t.buyCount);
+      document.getElementById('v-sells').textContent=num(t.sellCount);
+      document.getElementById('v-shares').textContent=refl.toFixed(2);
+      if(nflxUsd)document.getElementById('v-usd').textContent='$'+(refl*nflxUsd).toLocaleString('en-US',{maximumFractionDigits:0});
+      if(vSeen){tickTo(refl,1200);}
+      else{
+        var el=document.getElementById('v-nflx');
+        new IntersectionObserver(function(es,obs){
+          es.forEach(function(e){
+            if(e.isIntersecting&&!vSeen){vSeen=true;obs.disconnect();tickTo(refl,1800);}
+          });
+        },{threshold:.5}).observe(el);
+      }
+    }).catch(function(){});
+  }
+  vaultUpdate();
+  setInterval(vaultUpdate,30000);
 
   // live stats from Dexscreener
   var PAIR='https://api.dexscreener.com/latest/dex/pairs/robinhood/0x1431c115bd89cab1c78e0df9c97de9433a39f4f3a9e3be60a68a406e06d8b6d6';
