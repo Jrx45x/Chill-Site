@@ -162,6 +162,16 @@
   .v-stat b{display:block;font-weight:900;font-size:24px;color:#fff}
   .v-stat span{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--grey)}
 
+  /* TAKEOVER TRACKER */
+  .vault .progress-box{text-align:left;margin-top:26px}
+  .tr-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+  .tr-updated{color:#8c8c8c;font-size:13px}
+  .tr-headline{font-weight:900;font-size:clamp(40px,7vw,68px);line-height:1.05;margin-top:14px;color:#fff}
+  .tr-headline b{color:var(--red)}
+  .tr-sub{color:#d2d2d2;font-size:15px;margin-top:6px}
+  .tr-goal{display:flex;justify-content:space-between;margin-top:10px;font-size:13px;color:#bbb;flex-wrap:wrap;gap:6px}
+  .tr-goal b{color:var(--red)}
+
   /* TAKEOVER */
   .takeover{background:var(--near-black)}
   .progress-box{
@@ -346,17 +356,15 @@
 <section class="vault" id="vault">
   <div class="wrap">
     <p class="kicker reveal">The Vault</p>
-    <h2 class="reveal">Reflections Earned So Far.</h2>
-    <p class="sub reveal" style="margin:0 auto">Every Trade Pays Holders 1% In Real Tokenized NFLX. This Counter Only Goes Up.</p>
-    <div class="vault-counter reveal"><span id="v-nflx">0.00</span><span class="v-unit">NFLX</span></div>
-    <p class="v-sub reveal"><b id="v-shares">—</b> Netflix Shares Earned By Holders — Worth <b id="v-usd">—</b></p>
-    <div class="v-row reveal">
-      <div class="v-stat"><b id="v-vol">—</b><span>NFLX Volume Traded</span></div>
-      <div class="v-stat"><b id="v-swaps">—</b><span>Total Trades</span></div>
-      <div class="v-stat"><b id="v-buys">—</b><span>Buys</span></div>
-      <div class="v-stat"><b id="v-sells">—</b><span>Sells</span></div>
+    <div class="progress-box reveal" id="tracker">
+      <div class="tr-head"><span class="kicker">Shareholder Report</span><span class="tr-updated" id="tr-updated"></span></div>
+      <div class="tr-headline" id="tr-controlled">—</div>
+      <div class="tr-sub" id="tr-sub">NFLX Controlled</div>
+      <div class="bar" style="margin-top:24px"><div class="fill" id="tr-bar"></div></div>
+      <div class="tr-goal"><span>Goal: 2,120,000,000 NFLX — Majority Of Netflix</span><b id="tr-pct">—</b></div>
+      <div class="stats" id="tr-stats"></div>
+      <p class="progress-note" id="tr-disc">Parody token. Not affiliated with, endorsed by, or connected to Netflix, Inc. Not financial advice.</p>
     </div>
-    <p class="progress-note reveal" style="margin-top:26px">Live from the Sentry subgraph on Robinhood Chain. 1 NFLX token = 1 Netflix share.</p>
   </div>
 </section>
 
@@ -535,6 +543,41 @@
   },{threshold:.4});
   io2.observe(document.querySelector('.progress-box'));
 
+  // NFLX Takeover Tracker — daily holder report (refreshes ~daily; poll every 30 min)
+  var REPORT='https://cdn.jsdelivr.net/gh/mavrkofficial/nflx-n-chill@main/daily-holder-report/latest.json';
+  function money(n){return '$'+Math.round(n).toLocaleString('en-US')}
+  function trackerRender(d){
+    document.getElementById('tr-controlled').innerHTML=
+      d.nflx_controlled.toLocaleString('en-US',{maximumFractionDigits:1})+' <b>NFLX</b>';
+    document.getElementById('tr-sub').textContent=
+      'NFLX Controlled · ~'+money(d.usd_controlled)+' · '+d.stake_pct_of_netflix.toFixed(7)+'% Of Netflix';
+    document.getElementById('tr-bar').style.width=Math.max(d.progress_pct_to_majority,0.4)+'%';
+    document.getElementById('tr-pct').textContent=d.progress_pct_to_majority.toFixed(6)+'%';
+    document.getElementById('tr-updated').textContent=d.updated;
+    if(d.disclaimer)document.getElementById('tr-disc').textContent=d.disclaimer;
+    var stats=[
+      ['Treasury (LP)',d.nflx_in_lp.toLocaleString('en-US',{maximumFractionDigits:2})+' NFLX'],
+      ['Dividends Paid',d.reflections_nflx.toLocaleString('en-US',{maximumFractionDigits:2})+' NFLX'],
+      ['Shareholders',d.holders.toLocaleString('en-US')],
+      ['Market Cap',money(d.market_cap_usd)],
+      ['24h Volume',money(d.volume_24h_usd)],
+      ['NFLX Price','$'+d.nflx_price_usd.toFixed(2)]
+    ];
+    document.getElementById('tr-stats').innerHTML=stats.map(function(s){
+      return '<div class="stat"><div class="v" style="color:#fff;font-size:22px">'+s[1]+'</div><div class="l" style="color:var(--red)">'+s[0]+'</div></div>';
+    }).join('');
+  }
+  function trackerLoad(){
+    fetch(REPORT).then(function(r){return r.json()}).then(function(d){
+      trackerRender(d);
+    }).catch(function(){
+      var el=document.getElementById('tracker');
+      if(el)el.innerHTML='<img src="https://cdn.jsdelivr.net/gh/mavrkofficial/nflx-n-chill@main/daily-holder-report/shareholder-card.png" alt="$CHILL shareholder report" style="max-width:100%;border-radius:12px">';
+    });
+  }
+  trackerLoad();
+  setInterval(trackerLoad,1800000);
+
   function copyCA(){
     var txt=document.getElementById('ca-text').textContent.replace(/^CA:\s*/,'');
     if(navigator.clipboard){navigator.clipboard.writeText(txt);}
@@ -602,9 +645,9 @@
     var p=(d.pairs&&d.pairs[0])||d.pair;
     if(!p)return;
     var price=Number(p.priceUsd);
-    document.getElementById('s-price').textContent=price<0.01?'$'+price.toFixed(7):'$'+price.toFixed(4);
-    document.getElementById('s-mcap').textContent=fmt(p.marketCap||p.fdv);
-    document.getElementById('s-vol').textContent=fmt(p.volume&&p.volume.h24);
+    var sp=document.getElementById('s-price');if(sp)sp.textContent=price<0.01?'$'+price.toFixed(7):'$'+price.toFixed(4);
+    var sm=document.getElementById('s-mcap');if(sm)sm.textContent=fmt(p.marketCap||p.fdv);
+    var sv=document.getElementById('s-vol');if(sv)sv.textContent=fmt(p.volume&&p.volume.h24);
     var pn=parseFloat(p.priceNative);
     if(pn>0){nflxUsd=parseFloat(p.priceUsd)/pn;
       var vs=document.getElementById('v-shares').textContent;
