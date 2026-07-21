@@ -528,7 +528,7 @@
         var n=0,t=setInterval(function(){
           n+=PROGRESS/40;
           if(n>=PROGRESS){n=PROGRESS;clearInterval(t);}
-          document.getElementById('pct').textContent=fmtPct(n)+' of the way to '+next.name;
+          document.getElementById('pct').textContent=fmtPct(n)+' of the way through '+next.name;
         },30);
       }
     });
